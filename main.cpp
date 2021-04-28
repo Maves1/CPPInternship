@@ -14,8 +14,9 @@ void printdir(char *dir, int depth) {
         return;
     }
     chdir(dir);
-    entry = readdir(dp);
-    while (entry != NULL) {
+
+    // entry = readdir(dp);
+    while ((entry = readdir(dp)) != NULL) {
         lstat(entry->d_name, &statbuf);
         if (S_ISDIR(statbuf.st_mode)) {
             /* Находит каталог, но игнорирует . и .. */
@@ -28,23 +29,22 @@ void printdir(char *dir, int depth) {
             printf("%*s%s\n", depth, " ", entry->d_name);
         }
 
-        entry = readdir(dp);
+        // entry = readdir(dp);
     }
     chdir("..");
     closedir(dp);
 }
 
 int main(int argc, char* argv[]) {
+
     char *user = "";
     char *group = "";
     char *topdir = ".";
 
-    if (argc >= 2) {
-        user = argv[1];
-        group = argv[2];
-        topdir = argv[3];
-        printf("%s %s %s", user, group, topdir);
-    }
+    user = argv[1];
+    group = argv[2];
+    topdir = argv[3];
+
     printf("Directory scan of %s\n", topdir);
     printdir(topdir, 0);
     printf("done.\n");
