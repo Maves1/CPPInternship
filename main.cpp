@@ -15,7 +15,6 @@ void printdir(char *dir, int depth) {
     }
     chdir(dir);
 
-    // entry = readdir(dp);
     while ((entry = readdir(dp)) != NULL) {
         lstat(entry->d_name, &statbuf);
         if (S_ISDIR(statbuf.st_mode)) {
@@ -28,8 +27,6 @@ void printdir(char *dir, int depth) {
         } else {
             printf("%*s%s\n", depth, " ", entry->d_name);
         }
-
-        // entry = readdir(dp);
     }
     chdir("..");
     closedir(dp);
