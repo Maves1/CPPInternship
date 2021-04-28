@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <stdlib.h>
+#include <pwd.h>
 
 void printdir(char *dir, int depth) {
     DIR *dp;
@@ -18,11 +19,11 @@ void printdir(char *dir, int depth) {
     while ((entry = readdir(dp)) != NULL) {
         lstat(entry->d_name, &statbuf);
         if (S_ISDIR(statbuf.st_mode)) {
-            /* Находит каталог, но игнорирует . и .. */
+            
             if (strcmp(".", entry->d_name) == 0 || strcmp("..", entry->d_name) == 0)
                 continue;
             printf("%*s%s/\n", depth, "", entry->d_name);
-            /* Рекурсивный вызов с новый отступом */
+            
             printdir(entry->d_name, depth + 4);
         } else {
             printf("%*s%s\n", depth, " ", entry->d_name);
@@ -34,13 +35,20 @@ void printdir(char *dir, int depth) {
 
 int main(int argc, char* argv[]) {
 
-    char *user = "";
-    char *group = "";
+    char *userName = "";
+    char *groupName = "";
     char *topdir = ".";
 
-    user = argv[1];
-    group = argv[2];
+    userName = argv[1];
+    groupName = argv[2];
     topdir = argv[3];
+
+    struct passwd *p = getpwnam(userName);
+    if (p == NULL) {
+        printf("Hmm\n");
+    } else {
+        printf("%d\n", (int) p->pw_uid);
+    }
 
     printf("Directory scan of %s\n", topdir);
     printdir(topdir, 0);
