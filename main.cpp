@@ -9,9 +9,11 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+// Global userName and groupName
 char *userName;
 char *groupName;
 
+// Function that impersonates any given user (existing, of course)
 bool changeUser(char *userName, char *groupName) {
     struct passwd *p = getpwnam(userName);
     struct group *group = getgrnam(groupName);
@@ -32,6 +34,7 @@ bool changeUser(char *userName, char *groupName) {
     return false;
 }
 
+// Function that checks if the given user is a file owner
 bool isOwner(struct dirent *entry, char *userName) {
     struct passwd *userPwd = getpwnam(userName);
 
@@ -47,13 +50,8 @@ bool isOwner(struct dirent *entry, char *userName) {
     }
 }
 
-bool isRoot(char *userName) {
-    struct passwd *userPwd = getpwnam(userName);
-    struct passwd *rootPwd = getpwnam("root");
 
-
-}
-
+// Function that checks if a file belongs to a given group
 bool isInGroup(struct dirent *entry, char *groupName) {
     struct group *group = getgrnam(groupName);
     struct stat statbuf;
@@ -66,6 +64,7 @@ bool isInGroup(struct dirent *entry, char *groupName) {
     }
 }
 
+// Function that checks if the user has writing permission for a given file entry
 bool hasWritePermission(struct dirent *entry, char *userName, char *groupName) {
     struct stat statbuf;
     lstat(entry->d_name, &statbuf);
@@ -89,6 +88,7 @@ bool hasWritePermission(struct dirent *entry, char *userName, char *groupName) {
     return false;
 }
 
+// Function that checks permissions for all files and folders recursively
 void checkDir(char *dir, int depth) {
     DIR *dp;
     struct dirent *entry;
@@ -101,16 +101,20 @@ void checkDir(char *dir, int depth) {
 
     while ((entry = readdir(dp)) != NULL) {
         lstat(entry->d_name, &statbuf);
+
+        // If the file is a folder, print its name and call checkDir for this folder
         if (S_ISDIR(statbuf.st_mode)) {
             
-            if (strcmp(".", entry->d_name) == 0 || strcmp("..", entry->d_name) == 0)
+            // Skipping . and .. , and those which can't be modified by the given user
+            if (strcmp(".", entry->d_name) == 0 || strcmp("..", entry->d_name) == 0 || !hasWritePermission(entry, userName, groupName))
                 continue;
-            printf("%*s%s/\n", depth, "", entry->d_name);
+            printf("%*s folder: %s%s/\n", depth, " ", dir, entry->d_name);
             
             checkDir(entry->d_name, depth + 4);
         } else {
+            // Printing the full path to the file if the user has write permission
             if (hasWritePermission(entry, userName, groupName)) {
-                printf("%*s f %s\n", depth, " ", entry->d_name);
+                printf("%*s file: %s/%s\n", depth, " ", dir, entry->d_name);
             }
         }
     }
@@ -120,16 +124,18 @@ void checkDir(char *dir, int depth) {
 
 int main(int argc, char* argv[]) {
 
+    // Initial directory
     char *topdir = ".";
 
+    // Getting username, groupname, and directory from terminal arguments
     userName = argv[1];
     groupName = argv[2];
     topdir = argv[3];
 
+    // Starting the scan only in case we have root permissions
     if (changeUser(userName, groupName)) {
-        printf("Directory scan of %s\n", topdir);
+        printf("\nScan of %s:\n\n", topdir);
         checkDir(topdir, 0);
-        printf("done.\n");
     }
 
     exit(0);
