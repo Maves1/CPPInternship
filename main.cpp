@@ -6,6 +6,11 @@
 #include <stdlib.h>
 #include <pwd.h>
 #include <grp.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+char *userName;
+char *groupName;
 
 bool changeUser(char *userName, char *groupName) {
     struct passwd *p = getpwnam(userName);
@@ -27,7 +32,62 @@ bool changeUser(char *userName, char *groupName) {
     return false;
 }
 
-void printdir(char *dir, int depth) {
+bool isOwner(struct dirent *entry, char *userName) {
+    struct passwd *userPwd = getpwnam(userName);
+
+    struct stat statbuf;
+    lstat(entry->d_name, &statbuf);
+
+    struct passwd *entryPwd = getpwuid(statbuf.st_uid);
+
+    if (userPwd->pw_uid == entryPwd->pw_uid) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool isRoot(char *userName) {
+    struct passwd *userPwd = getpwnam(userName);
+    struct passwd *rootPwd = getpwnam("root");
+
+
+}
+
+bool isInGroup(struct dirent *entry, char *groupName) {
+    struct group *group = getgrnam(groupName);
+    struct stat statbuf;
+    lstat(entry->d_name, &statbuf);
+
+    if (group->gr_gid == statbuf.st_gid) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool hasWritePermission(struct dirent *entry, char *userName, char *groupName) {
+    struct stat statbuf;
+    lstat(entry->d_name, &statbuf);
+
+    if (isOwner(entry, userName)) {
+        if (S_IWUSR & statbuf.st_mode) {
+            return true;
+        }
+    } else if (isInGroup(entry, groupName)) {
+        if (S_IWGRP & statbuf.st_mode) {
+            return true;
+        }
+    } else {
+        if (S_IWOTH	& statbuf.st_mode) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void checkDir(char *dir, int depth) {
     DIR *dp;
     struct dirent *entry;
     struct stat statbuf;
@@ -45,9 +105,11 @@ void printdir(char *dir, int depth) {
                 continue;
             printf("%*s%s/\n", depth, "", entry->d_name);
             
-            printdir(entry->d_name, depth + 4);
+            checkDir(entry->d_name, depth + 4);
         } else {
-            printf("%*s%s\n", depth, " ", entry->d_name);
+            if (hasWritePermission(entry, userName, groupName)) {
+                printf("%*s f %s\n", depth, " ", entry->d_name);
+            }
         }
     }
     chdir("..");
@@ -56,18 +118,17 @@ void printdir(char *dir, int depth) {
 
 int main(int argc, char* argv[]) {
 
-    char *userName = "";
-    char *groupName = "";
     char *topdir = ".";
 
     userName = argv[1];
     groupName = argv[2];
     topdir = argv[3];
 
-    changeUser(userName, groupName);
+    if (changeUser(userName, groupName)) {
+        printf("Directory scan of %s\n", topdir);
+        checkDir(topdir, 0);
+        printf("done.\n");
+    }
 
-    printf("Directory scan of %s\n", topdir);
-    printdir(topdir, 0);
-    printf("done.\n");
     exit(0);
-   }
+}
