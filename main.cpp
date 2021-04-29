@@ -78,6 +78,8 @@ bool hasWritePermission(struct dirent *entry, char *userName, char *groupName) {
         if (S_IWGRP & statbuf.st_mode) {
             return true;
         }
+    } else if (geteuid() == 0) {
+        return true;
     } else {
         if (S_IWOTH	& statbuf.st_mode) {
             return true;
